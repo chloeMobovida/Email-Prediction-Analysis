@@ -1,0 +1,73 @@
+---
+title: "Email - Exploratory Analysis Sprint #5"
+author: "Chloe Li"
+date: "September 19, 2016"
+output:
+  pdf_document:
+    highlight: monochrome
+  html_document:
+    highlight: pygments
+    theme: united
+header-includes: \usepackage{graphicx} \usepackage{fancyhdr} \pagestyle{fancy} \setlength\headheight{28pt}
+  \fancyhead[L]{\includegraphics[width=0.5cm]{mobovidalogo.png}} \fancyfoot[LE,RO]{GPIM}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+setwd("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data")
+
+RFM_DT <- read.csv("RRFFK_220K.csv")
+
+#reformat data
+RFM_DT$riid <- as.character(RFM_DT$riid)
+RFM_DT$Ro <- as.factor(RFM_DT$Ro)
+RFM_DT$Rc <- as.factor(RFM_DT$Rc)
+RFM_DT$Fo <- as.factor(RFM_DT$Fo)
+RFM_DT$Fc <- as.factor(RFM_DT$Fc)
+RFM_DT$conversions <- as.factor(RFM_DT$conversions)
+
+```
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+hist(RFM_DT$Ro)
+
+
+
+
+```
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+# Determine number of clusters
+
+k_ready <- RFM_DT[,-1]
+k_ready <- k_ready[,-5]
+
+wss <- (nrow(k_ready)-1)*sum(apply(k_ready,2,var))
+for (i in 2:15) wss[i] <- sum(kmeans(k_ready, 
+  	centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares")
+
+
+
+
+# K-Means Cluster Analysis
+fit <- kmeans(k_ready, 3) # 5 cluster solution
+# get cluster means 
+aggregate(k_ready,by=list(fit$cluster),FUN=mean)
+# append cluster assignment
+RFM_DT <- data.frame(RFM_DT, fit$cluster)
+
+ 
+
+
+
+```
+
