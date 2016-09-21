@@ -11,6 +11,7 @@ output:
   word_document: default
 header-includes: \usepackage{graphicx} \usepackage{fancyhdr} \pagestyle{fancy} \setlength\headheight{28pt}
   \fancyhead[L]{\includegraphics[width=0.5cm]{mobovidalogo.png}} \fancyfoot[LE,RO]{CL}
+classoption: landscape
 ---
 
 ```{r setup, include=FALSE}
@@ -30,7 +31,12 @@ setwd("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data")
 pacman::p_load("gridExtra","ggplot2", "dplyr","lubridate","reshape2","data.table","quantmod","lme4","lattice","plyr","broom",'ReporteRs',"knitr","xtable", "cluster","fpc","factoextra","grid","gridExtra")
       
 #load data
-RFM_DT <- read.csv("RRFFK_220K.csv") #this is aggregated data after David Liu rank riid by recency and frequency
+RFM_DT <- read.csv("RRFFK_220K_sends.csv") #this is aggregated data after David Liu rank riid by recency and frequency
+
+RFM_DT <- dplyr::filter(RFM_DT, sends != "#N/A")
+
+#there are 3953 records of sends being "#N/A". David said remove those no matter what.
+
 
 RFM_DT_orig <- RFM_DT #reassign the dataset into new vector for clustering purpose
 
@@ -40,81 +46,8 @@ RFM_DT$riid <- as.character(RFM_DT$riid)
 cols = c(2, 3, 4,5)
 RFM_DT[cols] <- lapply(RFM_DT[cols], factor)
 
-#RFM_DT$conversions <- as.factor(RFM_DT$conversions)
-
-
-#------------------------------------------------TRANSFORM-----------------------------------------------------#
-#this is a very stupid way of grouping multiple variables and summarise them
-
-
-#transform the data from wide to long
-#RFM_DT_gr <- melt(RFM_DT, id=c(1,6), measure=c("Ro", "Rc", "Fc","Fo"))
-
-Groupby_Ro <- dplyr::group_by(RFM_DT, Ro)
-SumRo <- dplyr::summarise(Groupby_Ro,
-                          Total_Conversion = sum(conversions),
-                          Num_riid = length(riid))
-
-Groupby_Rc <- dplyr::group_by(RFM_DT, Rc)
-SumRc <- dplyr::summarise(Groupby_Rc,
-                          Total_Conversion = sum(conversions),
-                          Num_riid = length(riid))
-
-
-Groupby_Fc <- dplyr::group_by(RFM_DT, Fc)
-SumFc <- dplyr::summarise(Groupby_Fc,
-                          Total_Conversion = sum(conversions),
-                          Num_riid = length(riid))
-
-Groupby_Fo <- dplyr::group_by(RFM_DT, Fo)
-SumFo <- dplyr::summarise(Groupby_Fo,
-                          Total_Conversion = sum(conversions),
-                          Num_riid = length(riid))
-
-
-
-#combine dataset
-SumRo$Ro_ratio <- SumRo$Total_Conversion / SumRo$Num_riid
-
-SumRo$Rc <- SumRc$Total_Conversion
-SumRo$Rc_id <- SumRc$Num_riid
-SumRo$Rc_ratio <- SumRo$Rc/SumRo$Rc_id
-
-SumRo$Fc <- SumFc$Total_Conversion
-SumRo$Fc_id <- SumFc$Num_riid
-SumRo$Fc_ratio <- SumRo$Fc/SumRo$Fc_id
-
-SumRo$Fo <- SumFo$Total_Conversion
-SumRo$Fo_id <- SumFo$Num_riid
-SumRo$Fo_ratio <- SumRo$Fo/SumRo$Fo_id
-
-#transform the data from wide to long
-SumRo_Transformed <- melt(SumRo, id=1, measure=c("Ro_ratio", "Rc_ratio", "Fc_ratio","Fo_ratio"))
-#str(SumRo_Transformed)
-
-#rename the variables
-SumRo_Transformed <- dplyr::select(SumRo_Transformed, RFM_Score = Ro, Variable = variable, everything())
-
-
-
-SumRo_totalconversion <- dplyr::select(SumRo,RFM_Score = Ro, Ro = Total_Conversion,Rc, Fc, Fo)
-
-#transform the data from wide to long
-SumRo_totalConversion_Transformed <- melt(SumRo_totalconversion, id=1, measure=c("Ro", "Rc", "Fc","Fo"))
-#str(SumRo_Transformed)
-
-#rename the variables
-SumRo_totalConversion_Transformed <- dplyr::select(SumRo_totalConversion_Transformed, everything(), Variable = variable, everything())
-
-
-
-
-SumRo <- dplyr::select(SumRo, Ro, Ro_ratio, Rc_ratio, Fc_ratio, Fo_ratio)
-#rename
-SumRo <- dplyr::select(SumRo, RFM_Score = Ro, everything())
-
-
-
+RFM_DT[,'sends'] <- as.numeric(as.character(RFM_DT[,'sends']))
+RFM_DT[,'conversions'] <- as.numeric(RFM_DT[,'conversions'])
 ```
 
 ## Introduction
@@ -125,13 +58,14 @@ SumRo <- dplyr::select(SumRo, RFM_Score = Ro, everything())
 kable(head(RFM_DT_orig))
 ```
 
-- Explanations of variables:
-    + riid: unique identifier of email receivers
-    + Ro: recency score of open. The higher the score is, the most recent action was taken by the customer.
-    + Rc: recency score of click. Same as Ro. Table below shows the number of days passed associated with the score.
-    + Fo: life time open rate; number of opens/number of sent. The higher the score is, the higher the rate is.
-    + Fc: life time click rate; number of clicks/number of sent. Same logic as above.
-    + conversions: number of times the customer converted.
+
+## Explanations of variables
+- riid: unique identifier of email receivers
+- Ro: recency score of open. The higher the score is, the most recent action was taken by the customer.
+- Rc: recency score of click. Same as Ro. Table below shows the number of days passed associated with the score.
+- Fo: life time open rate; number of opens/number of sent. The higher the score is, the higher the rate is.
+- Fc: life time click rate; number of clicks/number of sent. Same logic as above.
+- conversions: number of times the customer converted.
 
 ```{r table_Var, echo=FALSE, message=FALSE, warning=FALSE, results='asis', warnings=FALSE}
 tabl <- "
@@ -142,62 +76,267 @@ tabl <- "
 cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
 ```
 
+
+```{r graph_DT, message=FALSE, warning=FALSE, include=FALSE}
+
+#------------------------------------------------TRANSFORM-----------------------------------------------------#
+#this is a very stupid way of grouping multiple variables and summarise them
+
+#this is grouping and summarising with sends
+
+#transform the data from wide to long
+#RFM_DT_gr <- melt(RFM_DT, id=c(1,6), measure=c("Ro", "Rc", "Fc","Fo"))
+
+Groupby_Ro <- dplyr::group_by(RFM_DT, Ro)
+SumRo <- dplyr::summarise(Groupby_Ro,
+                          Total_conversions_Ro = sum(conversions),
+                          Total_sends_Ro = sum(sends),
+                          Num_riid_Ro = length(riid))
+
+Groupby_Rc <- dplyr::group_by(RFM_DT, Rc)
+SumRc <- dplyr::summarise(Groupby_Rc,
+                          Total_conversions = sum(conversions),
+                          Total_sends = sum(sends),
+                          Num_riid = length(riid))
+
+
+Groupby_Fc <- dplyr::group_by(RFM_DT, Fc)
+SumFc <- dplyr::summarise(Groupby_Fc,
+                          Total_conversions = sum(conversions),
+                          Total_sends = sum(sends),
+                          Num_riid = length(riid))
+
+Groupby_Fo <- dplyr::group_by(RFM_DT, Fo)
+SumFo <- dplyr::summarise(Groupby_Fo,
+                          Total_conversions = sum(conversions),
+                          Total_sends = sum(sends),
+                          Num_riid = length(riid))
+
+
+#combine dataset
+SumRo$Total_conversions_Rc <- SumRc$Total_conversions
+SumRo$Total_sends_Rc <- SumRc$Total_sends
+SumRo$Num_riid_Rc <- SumRc$Num_riid
+
+
+
+SumRo$Total_conversions_Fc <- SumFc$Total_conversions
+SumRo$Total_sends_Fc <- SumFc$Total_sends
+SumRo$Num_riid_Fc <- SumFc$Num_riid
+
+SumRo$Total_conversions_Fo <- SumFo$Total_conversions
+SumRo$Total_sends_Fo <- SumFo$Total_sends
+SumRo$Num_riid_Fo <- SumFo$Num_riid
+
+
+
+#assign the dataset into a new dataframe (just to change the name)
+Summary_Membership_stat <- SumRo
+
+
+
+#1. calculate the conversion/riid ratio
+Summary_Membership_stat$converID_ratioRo <- Summary_Membership_stat$Total_conversions_Ro /Summary_Membership_stat$Num_riid_Ro
+
+
+Summary_Membership_stat$converID_ratioRc <- Summary_Membership_stat$Total_conversions_Rc /Summary_Membership_stat$Num_riid_Rc
+
+
+Summary_Membership_stat$converID_ratioFo <- Summary_Membership_stat$Total_conversions_Fo /Summary_Membership_stat$Num_riid_Fo
+
+Summary_Membership_stat$converID_ratioFc <- Summary_Membership_stat$Total_conversions_Fc /Summary_Membership_stat$Num_riid_Fc
+
+
+
+#2. calculate the conversion/sent
+
+Summary_Membership_stat$converSent_ratioRo <- Summary_Membership_stat$Total_conversions_Ro /Summary_Membership_stat$Total_sends_Ro
+
+
+Summary_Membership_stat$converSent_ratioRc <- Summary_Membership_stat$Total_conversions_Rc /Summary_Membership_stat$Total_sends_Rc
+
+
+Summary_Membership_stat$converSent_ratioFo <- Summary_Membership_stat$Total_conversions_Fo /Summary_Membership_stat$Total_sends_Fo
+
+
+Summary_Membership_stat$converSent_ratioFc <- Summary_Membership_stat$Total_conversions_Fc /Summary_Membership_stat$Total_sends_Fc
+
+
+
+#3. sent/num of riid
+
+Summary_Membership_stat$sentID_ratioRo <- Summary_Membership_stat$Total_sends_Ro /Summary_Membership_stat$Num_riid_Ro
+
+Summary_Membership_stat$sentID_ratioRc <- Summary_Membership_stat$Total_sends_Rc /Summary_Membership_stat$Num_riid_Rc
+
+Summary_Membership_stat$sentID_ratioFo <- Summary_Membership_stat$Total_sends_Fo /Summary_Membership_stat$Num_riid_Fo
+
+Summary_Membership_stat$sentID_ratioFc <- Summary_Membership_stat$Total_sends_Fc /Summary_Membership_stat$Num_riid_Fc
+
+
+
+Summary_Membership_stat <- dplyr::select(Summary_Membership_stat, RFM_Score = Ro, everything())
+```
+
+
+
+
+
+```{r ConverID, message=FALSE, warning=FALSE, include=FALSE}
+#transform the data from wide to long
+#on convert/number of riid ratio
+ConvertID <- melt(Summary_Membership_stat, id=1, measure=c("converID_ratioRo", "converID_ratioRc", "converID_ratioFo","converID_ratioFc"))
+
+
+#transform the data from wide to long
+#on total of conversions
+ConvertTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_conversions_Ro", "Total_conversions_Rc", "Total_conversions_Fc","Total_conversions_Fo"))
+
+```
+
 \pagebreak
-    
 
-## Preliminary Analysis
-- Comparison among different RFM group in total conversions.
-- Note: the data is not normalized yet. That is, the number of sent is very different in different group.
+# Comparison Graphs
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#graph a scatter plot for each RFM score and see how much total conversions relate to each categories
-ggplot(SumRo_totalConversion_Transformed, aes(x=RFM_Score, y=value, colour=Variable, shape=Variable)) + 
-  geom_point(alpha=1,size = 4) + 
+## Total Conversions
+
+```{r ConverID_g01, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+ggplot(ConvertTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
+  geom_point(size = 4) + 
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
   ggtitle("Total Conversions by RF") +
-  ylab("Total Conversions")
-
+  ylab("Total Conversions") +
+  theme(legend.position ="none", 
+  panel.background = element_rect(fill="light grey")
+)
+  
 
 ```
 
+
 \pagebreak
 
-- Therefore, we created this graph to show comparison among four groups in showing the relationship between the score and conversion ratio.
-- Conversion ratio is calculated by total number of conversion for a specific group / number of riid (customers).
-- However, still has not yet considered the number of sent effect.
+## Conversions/Number of riid
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#graph a scatter plot for each RFM score and see how much total conversions relate to each categories
-ggplot(SumRo_Transformed, aes(x=RFM_Score, y=value, colour=Variable, shape=Variable)) + 
+```{r ConverID_g02, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+ggplot(ConvertID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(alpha=1,size = 4) + 
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
-  ggtitle("Conversion Ratio by RF") +
-  ylab("Conversion Ratio")
+  ggtitle("Conversions per Membership by RF") +
+  ylab("Conversions per Membership") +
+  theme(legend.position ="none", 
+  panel.background = element_rect(fill="light grey")
+)
 
 
-##########
-#will change to sent/total number of riid
+
+#source("/Users/chloeli/Documents/02. EmailPrediction_CL/017. R_Function_CL_Email/multiplot_fun.R")
+
+#multiplot(a, b, cols=2)
+
+
 
 
 ```
 
 \pagebreak
 
-- Histogram on four groups to count number of riid per score.
+```{r SentID, message=FALSE, warning=FALSE, include=FALSE}
+#transform the data from wide to long
+#on sents/number of riid ratio
+SentID <- melt(Summary_Membership_stat, id=1, measure=c("sentID_ratioRo", "sentID_ratioRc", "sentID_ratioFo","sentID_ratioFc"))
+
+
+#transform the data from wide to long
+#on total of sents
+SentTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_sends_Ro", "Total_sends_Rc", "Total_sends_Fo","Total_sends_Fc"))
+
+```
+
+
+## Total Sends
+
+```{r sent_g01, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+ggplot(SentTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
+  geom_point(alpha=1,size = 4) + 
+  scale_size_area() + 
+  scale_colour_brewer(palette = "Set1") +
+  ggtitle("Total Sents by RF") +
+  ylab("Total Sents") + theme(
+  panel.background = element_rect(fill="light grey")
+)
+
+```
+
+\pagebreak
+
+## Sent by membership
+
+```{r sent_g02, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+ggplot(SentID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
+  geom_point(alpha=1,size = 4) + 
+  scale_size_area() + 
+  scale_colour_brewer(palette = "Set1") +
+  ggtitle("Sent per membership by RF") +
+  ylab("Sent per membership")
+```
+
+\pagebreak
+
+
+```{r ConverSent, message=FALSE, warning=FALSE, include=FALSE}
+#transform the data from wide to long
+#on conversions/sent
+ConverSent <- melt(Summary_Membership_stat, id=1, measure=c("converSent_ratioRo", "converSent_ratioRc", "converSent_ratioFo","converSent_ratioFc"))
+
+```
+
+## Conversion per sent
+
+```{r sent_g03, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+ggplot(ConverSent, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
+  geom_point(alpha=1,size = 4) + 
+  scale_size_area() + 
+  scale_colour_brewer(palette = "Set1") +
+  ggtitle("Conversion per Sent by RF") +
+  ylab("Conversion per Sent") + theme(
+  panel.background = element_rect(fill="light grey")
+)
+
+```
+
+
+
+\pagebreak
+
+## Histogram on four groups to count number of riid per score.
 - To see how many membership per score for each group.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #stupid way to graph histograms in one plot
 PRo = ggplot(RFM_DT_orig, aes(x=Ro)) + 
-  geom_histogram(bins = 30,fill = "#CC6666") + ylab("Number of Membership")
+  geom_histogram(bins = 30,fill = "#CC6666") + ylab("Number of Membership") + theme(
+  panel.background = element_rect(fill="light grey")
+)
 PRc = ggplot(RFM_DT_orig, aes(x=Rc)) + 
-  geom_histogram(bins = 30,fill = "#0072B2") + ylab("Number of Membership")
+  geom_histogram(bins = 30,fill = "#0072B2") + ylab("Number of Membership") + theme(
+  panel.background = element_rect(fill="light grey")
+)
 PFc = ggplot(RFM_DT_orig, aes(x=Fc)) + 
-  geom_histogram(bins = 30,fill = "#009E73") + ylab("Number of Membership")
+  geom_histogram(bins = 30,fill = "#009E73") + ylab("Number of Membership") + theme(
+  panel.background = element_rect(fill="light grey")
+)
 PFo = ggplot(RFM_DT_orig, aes(x=Fo)) + 
-  geom_histogram(bins = 30,fill = "#9999CC") + ylab("Number of Membership")
+  geom_histogram(bins = 30,fill = "#9999CC") + ylab("Number of Membership") + theme(
+  panel.background = element_rect(fill="light grey")
+)
 
 source("/Users/chloeli/Documents/02. EmailPrediction_CL/017. R_Function_CL_Email/multiplot_fun.R")
 
