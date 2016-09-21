@@ -1,15 +1,16 @@
 ---
-title: "Email - Exploratory Analysis Sprint #5"
+title: "Email - Exploratory Analysis"
 author: "Chloe Li"
-date: "September 19, 2016"
+date: "September 20, 2016"
 output:
   pdf_document:
     highlight: monochrome
   html_document:
     highlight: pygments
     theme: united
+  word_document: default
 header-includes: \usepackage{graphicx} \usepackage{fancyhdr} \pagestyle{fancy} \setlength\headheight{28pt}
-  \fancyhead[L]{\includegraphics[width=0.5cm]{mobovidalogo.png}} \fancyfoot[LE,RO]{GPIM}
+  \fancyhead[L]{\includegraphics[width=0.5cm]{mobovidalogo.png}} \fancyfoot[LE,RO]{CL}
 ---
 
 ```{r setup, include=FALSE}
@@ -17,57 +18,201 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 
-
 ```{r, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls())
+#set directory
 setwd("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data")
 
-RFM_DT <- read.csv("RRFFK_220K.csv")
+#load neccessary packages
+pacman::p_load("gridExtra","ggplot2", "dplyr","lubridate","reshape2","data.table","quantmod","lme4","lattice","plyr","broom",'ReporteRs',"knitr","xtable", "cluster","fpc","factoextra","grid","gridExtra")
+      
+#load data
+RFM_DT <- read.csv("RRFFK_220K.csv") #this is aggregated data after David Liu rank riid by recency and frequency
 
-#reformat data
+RFM_DT_orig <- RFM_DT #reassign the dataset into new vector for clustering purpose
+
+#reformat data for graphing purpose
 RFM_DT$riid <- as.character(RFM_DT$riid)
 RFM_DT$Ro <- as.factor(RFM_DT$Ro)
 RFM_DT$Rc <- as.factor(RFM_DT$Rc)
 RFM_DT$Fo <- as.factor(RFM_DT$Fo)
 RFM_DT$Fc <- as.factor(RFM_DT$Fc)
-RFM_DT$conversions <- as.factor(RFM_DT$conversions)
+#RFM_DT$conversions <- as.factor(RFM_DT$conversions)
 
 ```
 
 
 ```{r, message=FALSE, warning=FALSE, include=FALSE}
-hist(RFM_DT$Ro)
+#this is a very stupid way of grouping multiple variables and summarise them
+
+Groupby_Ro <- dplyr::group_by(RFM_DT, Ro)
+SumRo <- dplyr::summarise(Groupby_Ro,
+                          Total_Conversion = sum(conversions),
+                          Num_riid = length(riid))
+
+Groupby_Rc <- dplyr::group_by(RFM_DT, Rc)
+SumRc <- dplyr::summarise(Groupby_Rc,
+                          Total_Conversion = sum(conversions),
+                          Num_riid = length(riid))
+
+
+Groupby_Fc <- dplyr::group_by(RFM_DT, Fc)
+SumFc <- dplyr::summarise(Groupby_Fc,
+                          Total_Conversion = sum(conversions),
+                          Num_riid = length(riid))
+
+Groupby_Fo <- dplyr::group_by(RFM_DT, Fo)
+SumFo <- dplyr::summarise(Groupby_Fo,
+                          Total_Conversion = sum(conversions),
+                          Num_riid = length(riid))
+
+
+
+#combine dataset
+SumRo$Ro_ratio <- SumRo$Total_Conversion / SumRo$Num_riid
+
+SumRo$Rc <- SumRc$Total_Conversion
+SumRo$Rc_id <- SumRc$Num_riid
+SumRo$Rc_ratio <- SumRo$Rc/SumRo$Rc_id
+
+SumRo$Fc <- SumFc$Total_Conversion
+SumRo$Fc_id <- SumFc$Num_riid
+SumRo$Fc_ratio <- SumRo$Fc/SumRo$Fc_id
+
+SumRo$Fo <- SumFo$Total_Conversion
+SumRo$Fo_id <- SumFo$Num_riid
+SumRo$Fo_ratio <- SumRo$Fo/SumRo$Fo_id
+
+#transform the data from wide to long
+SumRo_Transformed <- melt(SumRo, id=1, measure=c("Ro_ratio", "Rc_ratio", "Fc_ratio","Fo_ratio"))
+#str(SumRo_Transformed)
+
+#rename the variables
+SumRo_Transformed <- dplyr::select(SumRo_Transformed, RFM_Score = Ro, Variable = variable, everything())
+
+
+
+SumRo_totalconversion <- dplyr::select(SumRo,RFM_Score = Ro, Ro = Total_Conversion,Rc, Fc, Fo)
+
+#transform the data from wide to long
+SumRo_totalConversion_Transformed <- melt(SumRo_totalconversion, id=1, measure=c("Ro", "Rc", "Fc","Fo"))
+#str(SumRo_Transformed)
+
+#rename the variables
+SumRo_totalConversion_Transformed <- dplyr::select(SumRo_totalConversion_Transformed, everything(), Variable = variable, everything())
+
+
+
+
+SumRo <- dplyr::select(SumRo, Ro, Ro_ratio, Rc_ratio, Fc_ratio, Fo_ratio)
+#rename
+SumRo <- dplyr::select(SumRo, RFM_Score = Ro, everything())
+
+
+
+
 
 
 
 
 ```
 
+## Graph
+- The below graph shows the scatter plot for total number of conversions for each of RFM variable across all levels (1-7). 
+    + Ro is how recently the customer opened an email (7 means most recent while 1 means life time)
+    + Rc is how recently the customer clicked an email
+    + Fo is open rate (open/sent) (7 most frequent actions)
+    + Fc is click rate (click/sent)
+    
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much total conversions relate to each categories
+ggplot(SumRo_totalConversion_Transformed, aes(x=RFM_Score, y=value, colour=Variable, shape=Variable)) + 
+  geom_point(alpha=1,size = 4) + 
+  scale_size_area() + 
+  scale_colour_brewer(palette = "Set1") +
+  ggtitle("Total Conversions by RF") +
+  ylab("Total Conversions")
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+```
+
+## Graph 2
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#graph a scatter plot for each RFM score and see how much total conversions relate to each categories
+ggplot(SumRo_Transformed, aes(x=RFM_Score, y=value, colour=Variable, shape=Variable)) + 
+  geom_point(alpha=1,size = 4) + 
+  scale_size_area() + 
+  scale_colour_brewer(palette = "Set1") +
+  ggtitle("Conversion Ratio by RF") +
+  ylab("Conversion Ratio")
+
+
+##########
+#will change to sent/total number of riid
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#stupid way to graph histograms in one plot
+PRo = ggplot(RFM_DT_orig, aes(x=Ro)) + 
+  geom_histogram(bins = 30,fill = "#CC6666") + ylab("Number of Membership")
+PRc = ggplot(RFM_DT_orig, aes(x=Rc)) + 
+  geom_histogram(bins = 30,fill = "#0072B2") + ylab("Number of Membership")
+PFc = ggplot(RFM_DT_orig, aes(x=Fc)) + 
+  geom_histogram(bins = 30,fill = "#009E73") + ylab("Number of Membership")
+PFo = ggplot(RFM_DT_orig, aes(x=Fo)) + 
+  geom_histogram(bins = 30,fill = "#9999CC") + ylab("Number of Membership")
+
+source("/Users/chloeli/Documents/02. EmailPrediction_CL/017. R_Function_CL_Email/multiplot_fun.R")
+
+multiplot(PRo,PRc,PFc, PFo, cols=2)
+
+
+```
+
+
+
+
+
+
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 # Determine number of clusters
 
-k_ready <- RFM_DT[,-1]
+k_ready <- RFM_DT_orig[,-1]
 k_ready <- k_ready[,-5]
 
-wss <- (nrow(k_ready)-1)*sum(apply(k_ready,2,var))
-for (i in 2:15) wss[i] <- sum(kmeans(k_ready, 
-  	centers=i)$withinss)
-plot(1:15, wss, type="b", xlab="Number of Clusters",
-  ylab="Within groups sum of squares")
+#wss <- (nrow(k_ready)-1)*sum(apply(k_ready,2,var))
+#for (i in 2:15) wss[i] <- sum(kmeans(k_ready, 
+#  	centers=i)$withinss)
+#plot(1:15, wss, type="b", xlab="Number of Clusters",
+#  ylab="Within groups sum of squares")
 
-
+fviz_nbclust(k_ready, kmeans, method = "wss") +
+    geom_vline(xintercept = 3, linetype = 2)
 
 
 # K-Means Cluster Analysis
-fit <- kmeans(k_ready, 3) # 5 cluster solution
+fit <- kmeans(k_ready, 4) # 4 cluster solution
 # get cluster means 
 aggregate(k_ready,by=list(fit$cluster),FUN=mean)
 # append cluster assignment
-RFM_DT <- data.frame(RFM_DT, fit$cluster)
+RFM_DT_orig <- data.frame(RFM_DT_orig, fit$cluster)
+```
 
- 
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+#set directory
+setwd("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data")
+
+email_users <- read.csv("emails_useremailstats_partial.csv")
+
 
 
 
 ```
+
 
