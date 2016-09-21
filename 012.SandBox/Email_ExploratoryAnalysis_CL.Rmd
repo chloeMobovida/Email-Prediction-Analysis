@@ -1,7 +1,7 @@
 ---
 title: "Email - Exploratory Analysis"
 author: "Chloe Li"
-date: "September 20, 2016"
+date: "September 21, 2016"
 output:
   pdf_document:
     highlight: monochrome
@@ -18,12 +18,15 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r load, message=FALSE, warning=FALSE, include=FALSE}
+
+#--------------------------------------------------LOAD-------------------------------------------------------#
 rm(list = ls())
 #set directory
 setwd("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data")
 
 #load neccessary packages
+#Note, you might need to install pacman first
 pacman::p_load("gridExtra","ggplot2", "dplyr","lubridate","reshape2","data.table","quantmod","lme4","lattice","plyr","broom",'ReporteRs',"knitr","xtable", "cluster","fpc","factoextra","grid","gridExtra")
       
 #load data
@@ -33,17 +36,19 @@ RFM_DT_orig <- RFM_DT #reassign the dataset into new vector for clustering purpo
 
 #reformat data for graphing purpose
 RFM_DT$riid <- as.character(RFM_DT$riid)
-RFM_DT$Ro <- as.factor(RFM_DT$Ro)
-RFM_DT$Rc <- as.factor(RFM_DT$Rc)
-RFM_DT$Fo <- as.factor(RFM_DT$Fo)
-RFM_DT$Fc <- as.factor(RFM_DT$Fc)
+#change multiple variables into factor type
+cols = c(2, 3, 4,5)
+RFM_DT[cols] <- lapply(RFM_DT[cols], factor)
+
 #RFM_DT$conversions <- as.factor(RFM_DT$conversions)
 
-```
 
-
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+#------------------------------------------------TRANSFORM-----------------------------------------------------#
 #this is a very stupid way of grouping multiple variables and summarise them
+
+
+#transform the data from wide to long
+#RFM_DT_gr <- melt(RFM_DT, id=c(1,6), measure=c("Ro", "Rc", "Fc","Fo"))
 
 Groupby_Ro <- dplyr::group_by(RFM_DT, Ro)
 SumRo <- dplyr::summarise(Groupby_Ro,
@@ -110,20 +115,40 @@ SumRo <- dplyr::select(SumRo, RFM_Score = Ro, everything())
 
 
 
-
-
-
-
-
 ```
 
-## Graph
-- The below graph shows the scatter plot for total number of conversions for each of RFM variable across all levels (1-7). 
-    + Ro is how recently the customer opened an email (7 means most recent while 1 means life time)
-    + Rc is how recently the customer clicked an email
-    + Fo is open rate (open/sent) (7 most frequent actions)
-    + Fc is click rate (click/sent)
+## Introduction
+- This documents the exploratory analysis process for email prediction project.
+- The sample of input data is shown as below restructured and sent by David Liu:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+kable(head(RFM_DT_orig))
+```
+
+- Explanations of variables:
+    + riid: unique identifier of email receivers
+    + Ro: recency score of open. The higher the score is, the most recent action was taken by the customer.
+    + Rc: recency score of click. Same as Ro. Table below shows the number of days passed associated with the score.
+    + Fo: life time open rate; number of opens/number of sent. The higher the score is, the higher the rate is.
+    + Fc: life time click rate; number of clicks/number of sent. Same logic as above.
+    + conversions: number of times the customer converted.
+
+```{r table_Var, echo=FALSE, message=FALSE, warning=FALSE, results='asis', warnings=FALSE}
+tabl <- "
+| Score      | 7 | 6 | 5  |  4 |  3 |  2 |   1     |
+|-----------:|--:|--:|---:|---:|---:|---:|--------:|
+|Days Before | 3 | 7 | 14 | 30 | 60 | 90 | LifeTime|  
+"
+cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+```
+
+\pagebreak
     
+
+## Preliminary Analysis
+- Comparison among different RFM group in total conversions.
+- Note: the data is not normalized yet. That is, the number of sent is very different in different group.
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #graph a scatter plot for each RFM score and see how much total conversions relate to each categories
 ggplot(SumRo_totalConversion_Transformed, aes(x=RFM_Score, y=value, colour=Variable, shape=Variable)) + 
@@ -136,7 +161,11 @@ ggplot(SumRo_totalConversion_Transformed, aes(x=RFM_Score, y=value, colour=Varia
 
 ```
 
-## Graph 2
+\pagebreak
+
+- Therefore, we created this graph to show comparison among four groups in showing the relationship between the score and conversion ratio.
+- Conversion ratio is calculated by total number of conversion for a specific group / number of riid (customers).
+- However, still has not yet considered the number of sent effect.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #graph a scatter plot for each RFM score and see how much total conversions relate to each categories
@@ -154,6 +183,10 @@ ggplot(SumRo_Transformed, aes(x=RFM_Score, y=value, colour=Variable, shape=Varia
 
 ```
 
+\pagebreak
+
+- Histogram on four groups to count number of riid per score.
+- To see how many membership per score for each group.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #stupid way to graph histograms in one plot
