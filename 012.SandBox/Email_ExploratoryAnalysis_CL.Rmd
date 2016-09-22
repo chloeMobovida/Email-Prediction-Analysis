@@ -28,7 +28,8 @@ setwd("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data")
 
 #load neccessary packages
 #Note, you might need to install pacman first
-pacman::p_load("gridExtra","ggplot2", "dplyr","lubridate","reshape2","data.table","quantmod","lme4","lattice","plyr","broom",'ReporteRs',"knitr","xtable", "cluster","fpc","factoextra","grid","gridExtra")
+pacman::p_load("gridExtra","ggplot2", "dplyr","lubridate","reshape2","data.table","quantmod","lme4","lattice","plyr","broom",'ReporteRs',"knitr","xtable", "cluster","fpc","factoextra","grid","gridExtra","scales")
+
       
 #load data
 RFM_DT <- read.csv("RRFFK_220K_sends.csv") #this is aggregated data after David Liu rank riid by recency and frequency
@@ -69,7 +70,7 @@ kable(head(RFM_DT_orig))
 
 ```{r table_Var, echo=FALSE, message=FALSE, warning=FALSE, results='asis', warnings=FALSE}
 tabl <- "
-| Score      | 7 | 6 | 5  |  4 |  3 |  2 |   1     |
+|Ro/Rc Score | 7 | 6 | 5  |  4 |  3 |  2 |   1     |
 |-----------:|--:|--:|---:|---:|---:|---:|--------:|
 |Days Before | 3 | 7 | 14 | 30 | 60 | 90 | LifeTime|  
 "
@@ -190,7 +191,7 @@ ConvertID <- melt(Summary_Membership_stat, id=1, measure=c("converID_ratioRo", "
 
 #transform the data from wide to long
 #on total of conversions
-ConvertTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_conversions_Ro", "Total_conversions_Rc", "Total_conversions_Fc","Total_conversions_Fo"))
+ConvertTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_conversions_Ro", "Total_conversions_Rc", "Total_conversions_Fo","Total_conversions_Fc"))
 
 ```
 
@@ -198,39 +199,42 @@ ConvertTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_conversions
 
 # Comparison Graphs
 
-## Total Conversions
+- Total Conversions
 
 ```{r ConverID_g01, echo=FALSE, message=FALSE, warning=FALSE}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
 ggplot(ConvertTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(size = 4) + 
   scale_size_area() + 
-  scale_colour_brewer(palette = "Set1") +
-  ggtitle("Total Conversions by RF") +
+  #scale_colour_brewer(palette = "Set1") +
+  ggtitle("Total Conversions") +
   ylab("Total Conversions") +
-  theme(legend.position ="none", 
-  panel.background = element_rect(fill="light grey")
-)
+  theme(legend.position ="top", 
+  panel.background = element_rect(fill="light grey"))  + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc"))
   
+
 
 ```
 
-
-\pagebreak
-
-## Conversions/Number of riid
+- Conversions/Number of riid
 
 ```{r ConverID_g02, echo=FALSE, message=FALSE, warning=FALSE}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
 ggplot(ConvertID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(alpha=1,size = 4) + 
   scale_size_area() + 
-  scale_colour_brewer(palette = "Set1") +
-  ggtitle("Conversions per Membership by RF") +
+  #scale_colour_brewer(palette = "Set1") +
+  ggtitle("Conversions per Membership") +
   ylab("Conversions per Membership") +
-  theme(legend.position ="none", 
+  theme(legend.position ="top",  
   panel.background = element_rect(fill="light grey")
-)
+) + scale_y_continuous(labels = scales::percent)
+
+
+
+#grid.arrange(a, b, legend, ncol=2, #, nrow = 2)
+#             layout_matrix = rbind(c(1,2), c(3,3)))
+            # widths = c(2.7, 2.7), heights = c(2.5, 0.2))
 
 
 
@@ -239,7 +243,7 @@ ggplot(ConvertID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) +
 #multiplot(a, b, cols=2)
 
 
-
+#http://www.sthda.com/english/wiki/ggplot2-easy-way-to-mix-multiple-graphs-on-the-same-page-r-software-and-data-visualization
 
 ```
 
@@ -262,14 +266,15 @@ SentTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_sends_Ro", "To
 
 ```{r sent_g01, echo=FALSE, message=FALSE, warning=FALSE}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+#options(scipen=10000)
+
 ggplot(SentTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(alpha=1,size = 4) + 
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
-  ggtitle("Total Sents by RF") +
-  ylab("Total Sents") + theme(
-  panel.background = element_rect(fill="light grey")
-)
+  ggtitle("Total Sents") +
+  ylab("Total Sents") + theme(legend.position ="top", 
+  panel.background = element_rect(fill="light grey")) + scale_y_continuous(labels = comma) + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc"))
 
 ```
 
@@ -283,8 +288,10 @@ ggplot(SentID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) +
   geom_point(alpha=1,size = 4) + 
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
-  ggtitle("Sent per membership by RF") +
-  ylab("Sent per membership")
+  ggtitle("Sent per membership") +
+  ylab("Sent per membership") + theme(legend.position ="top", 
+  panel.background = element_rect(fill="light grey")) + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc"))
+
 ```
 
 \pagebreak
@@ -305,10 +312,10 @@ ggplot(ConverSent, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) +
   geom_point(alpha=1,size = 4) + 
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
-  ggtitle("Conversion per Sent by RF") +
-  ylab("Conversion per Sent") + theme(
+  ggtitle("Conversion per Sent") +
+  ylab("Conversion per Sent") + theme(legend.position ="top", 
   panel.background = element_rect(fill="light grey")
-)
+) +scale_y_continuous(labels = scales::percent)+ scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc")) 
 
 ```
 
@@ -346,10 +353,15 @@ multiplot(PRo,PRc,PFc, PFo, cols=2)
 ```
 
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
+library(ggplot2)
+p1 = qplot(1:10,rnorm(10))
+p2 = qplot(1:10,rnorm(10))
+library(gridExtra)
+grid.arrange(p1, p2, ncol=2, top = "Main title")
 
-
-
+```
 
 ```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 # Determine number of clusters
