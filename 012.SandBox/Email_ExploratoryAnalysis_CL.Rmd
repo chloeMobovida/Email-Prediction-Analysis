@@ -1,7 +1,7 @@
 ---
 title: "Email - Exploratory Analysis"
 author: "Chloe Li"
-date: "September 21, 2016"
+date: "September 22, 2016"
 output:
   pdf_document:
     highlight: monochrome
@@ -11,7 +11,6 @@ output:
   word_document: default
 header-includes: \usepackage{graphicx} \usepackage{fancyhdr} \pagestyle{fancy} \setlength\headheight{28pt}
   \fancyhead[L]{\includegraphics[width=0.5cm]{mobovidalogo.png}} \fancyfoot[LE,RO]{CL}
-classoption: landscape
 ---
 
 ```{r setup, include=FALSE}
@@ -51,22 +50,27 @@ RFM_DT[,'sends'] <- as.numeric(as.character(RFM_DT[,'sends']))
 RFM_DT[,'conversions'] <- as.numeric(RFM_DT[,'conversions'])
 ```
 
-## Introduction
+# Introduction
+- The objective of email analysis is to use historical email data adjust our email strategies based on predicted customers' behaviors pattern. Eventually, we would like to lower email costs and boost up our revenue by sending emails to customers who are most likely to convert.
+- Cody has sent emails to the customers included in this analysis, should get the result back on Friday Sept 23rd 2016. We will use those behaviors data (opens, clicks etc.) to train and test predictive model.
+- As of Sept. 22 2016, this project is at the stage of evaluating data/variables.
 - This documents the exploratory analysis process for email prediction project.
-- The sample of input data is shown as below restructured and sent by David Liu:
+- The sample of input data is shown as below was preprocessed by David Liu:
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-kable(head(RFM_DT_orig))
+kable(RFM_DT_orig[1:5,])
 ```
 
 
-## Explanations of variables
+# Preliminary Analysis
+- This document only shows the preliminary analysis conducted before any further data analysis being performed. 
+- The analysis will show how each variable relate to each other, and how those variables might affect our target variable (at this point - conversion).
+
+
+# Explanations of variables
 - riid: unique identifier of email receivers
 - Ro: recency score of open. The higher the score is, the most recent action was taken by the customer.
 - Rc: recency score of click. Same as Ro. Table below shows the number of days passed associated with the score.
-- Fo: life time open rate; number of opens/number of sent. The higher the score is, the higher the rate is.
-- Fc: life time click rate; number of clicks/number of sent. Same logic as above.
-- conversions: number of times the customer converted.
 
 ```{r table_Var, echo=FALSE, message=FALSE, warning=FALSE, results='asis', warnings=FALSE}
 tabl <- "
@@ -76,6 +80,12 @@ tabl <- "
 "
 cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
 ```
+
+- Fo: life time open rate; number of opens/number of sent. The higher the score is (7 - highest), the higher the rate is.
+- Fc: life time click rate; number of clicks/number of sent. Same logic as above.
+- conversions: number of times the customer converted.
+- sends: number of emails sent
+
 
 
 ```{r graph_DT, message=FALSE, warning=FALSE, include=FALSE}
@@ -118,8 +128,6 @@ SumFo <- dplyr::summarise(Groupby_Fo,
 SumRo$Total_conversions_Rc <- SumRc$Total_conversions
 SumRo$Total_sends_Rc <- SumRc$Total_sends
 SumRo$Num_riid_Rc <- SumRc$Num_riid
-
-
 
 SumRo$Total_conversions_Fc <- SumFc$Total_conversions
 SumRo$Total_sends_Fc <- SumFc$Total_sends
@@ -175,7 +183,7 @@ Summary_Membership_stat$sentID_ratioFo <- Summary_Membership_stat$Total_sends_Fo
 Summary_Membership_stat$sentID_ratioFc <- Summary_Membership_stat$Total_sends_Fc /Summary_Membership_stat$Num_riid_Fc
 
 
-
+#rename variables
 Summary_Membership_stat <- dplyr::select(Summary_Membership_stat, RFM_Score = Ro, everything())
 ```
 
@@ -197,11 +205,10 @@ ConvertTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_conversions
 
 \pagebreak
 
-# Comparison Graphs
-
+# Examining Relationships
 - Total Conversions
 
-```{r ConverID_g01, echo=FALSE, message=FALSE, warning=FALSE}
+```{r ConverID_g01, echo=FALSE, message=FALSE, warning=FALSE,fig.width = 5.5, fig.height = 4}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
 ggplot(ConvertTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(size = 4) + 
@@ -209,16 +216,13 @@ ggplot(ConvertTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable))
   #scale_colour_brewer(palette = "Set1") +
   ggtitle("Total Conversions") +
   ylab("Total Conversions") +
-  theme(legend.position ="top", 
+  theme(legend.position ="none", 
   panel.background = element_rect(fill="light grey"))  + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc"))
-  
-
-
 ```
 
 - Conversions/Number of riid
 
-```{r ConverID_g02, echo=FALSE, message=FALSE, warning=FALSE}
+```{r ConverID_g02, echo=FALSE, message=FALSE, warning=FALSE,fig.width = 5.5, fig.height = 4}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
 ggplot(ConvertID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(alpha=1,size = 4) + 
@@ -226,26 +230,58 @@ ggplot(ConvertID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) +
   #scale_colour_brewer(palette = "Set1") +
   ggtitle("Conversions per Membership") +
   ylab("Conversions per Membership") +
-  theme(legend.position ="top",  
+  theme(legend.position ="bottom",  
   panel.background = element_rect(fill="light grey")
-) + scale_y_continuous(labels = scales::percent)
-
+)  + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc")) #+ scale_y_continuous(labels = scales::percent)
 
 
 #grid.arrange(a, b, legend, ncol=2, #, nrow = 2)
 #             layout_matrix = rbind(c(1,2), c(3,3)))
             # widths = c(2.7, 2.7), heights = c(2.5, 0.2))
-
-
-
 #source("/Users/chloeli/Documents/02. EmailPrediction_CL/017. R_Function_CL_Email/multiplot_fun.R")
-
 #multiplot(a, b, cols=2)
-
-
 #http://www.sthda.com/english/wiki/ggplot2-easy-way-to-mix-multiple-graphs-on-the-same-page-r-software-and-data-visualization
 
 ```
+
+\pagebreak
+
+## Discovery/Explanation
+
+```{r ConverSent, message=FALSE, warning=FALSE, include=FALSE}
+#transform the data from wide to long
+#on conversions/sent
+ConverSent <- melt(Summary_Membership_stat, id=1, measure=c("converSent_ratioRo", "converSent_ratioRc", "converSent_ratioFo","converSent_ratioFc"))
+
+```
+
+- Conversion per sent
+
+```{r sent_g03, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 5.5, fig.height = 4}
+#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
+ggplot(ConverSent, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
+  geom_point(alpha=1,size = 4) + 
+  scale_size_area() + 
+  scale_colour_brewer(palette = "Set1") +
+  ggtitle("Conversion per Sent") +
+  ylab("Conversion per Sent") + theme(legend.position ="bottom", 
+  panel.background = element_rect(fill="light grey")
+) +scale_y_continuous(labels = scales::percent)+ scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc")) 
+
+```
+
+
+## Scatter plot on conversions over number of sent.
+- y-axis represents the ratio of number of conversions per email sent. (how likely a customer in specific group at specific score would convert?)
+- x-axis represents the RFM_score of 1-7.
+    + Fc, as the Fc goes up, that is, score goes up, that is, as the the click rate goes up, the likelihood of this customer to convert is going up as well. Which makes sense, because the more they click, the more likely they will make a purchase. Here we do not need to consider the base value because by having the ratio of conversion over sent, we already normalized the data. Therefore, for those customers who fall under Fc at score of 7, we would like to target them, we could generate higher revenue by reduce the number of sent to them since they have higher conversion rate. Without considering the effect of what kind of emails (campaign) we sent out to them specifically, we know that, they will more likely to click on the link in the email no matter what we sent and have higher possibility of making a purchase at the end.
+    + Fo, as the Fo goes up, that is, score goes up from 1-7, as the open rate goes up, the likelihood of these customers to convert fluctuates but maintain at a low level of conversions rate. Which makes sense because, number of open for each customer for each email count is unique, while the number of clicks on an email might be way larger than the number of open, since there are multiple links associated with that specific email. But here, even the open rate goes up, the likelihood of convert is slow low, and has a peak at score of 7. For this group of customers, even their open rate is high but low conversion rate, it means that they are somewhat interested in our emails but for some reason they do not want to make a purchase afterward, either due to not enough discount/promotion, or not related to their interest (wrong phone model, not their taste/style, or not type of accessories they would like to buy etc.). Since we could not estimate customers’ personal interest at this point, we could target those customers with higher discount or better promotion event, should we send more emails to them, not necessarily true, but we could look at other graphs as well.
+    + Rc, as the score goes up, its how recent customers click on emails. For this group of customers, no matter how recent they made an action to the email, they have low conversion rate. Although, when score goes up (recent action were captured), customers tend to have higher conversion rate. Again, no matter how many life time emails they have received, if they click the email recently they tend to make a purchase in general. This could be because we have some sort of promotions going on that attracts them to make a purchase.
+    + Ro, as the score goes up, its how recent customers open the emails. Customers who opened the email most recently tend to have higher conversion rate over sent. This ignore how many email we already sent to them.
+- SO IN GENERAL
+    + with combination of all four groups Ro, Rc, Fo, Fc...
+    + In order to have higher conversion/sent, which means for every email we sent to the customer, we want them to make a purchase on that, we should focus on customers who have high click rate (7), open rate (7, or 4), Rc (recent action maker) of 6, and Ro of (7). Those customers are more likely to convert ignoring the fact that how many emails we sent to them over time.
+        
 
 \pagebreak
 
@@ -261,10 +297,10 @@ SentTotal <- melt(Summary_Membership_stat, id=1, measure=c("Total_sends_Ro", "To
 
 ```
 
+\pagebreak
+- Total Sends
 
-## Total Sends
-
-```{r sent_g01, echo=FALSE, message=FALSE, warning=FALSE}
+```{r sent_g01, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 5.5, fig.height = 4}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
 #options(scipen=10000)
 
@@ -273,51 +309,27 @@ ggplot(SentTotal, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) +
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
   ggtitle("Total Sents") +
-  ylab("Total Sents") + theme(legend.position ="top", 
+  ylab("Total Sents") + theme(legend.position ="none", 
   panel.background = element_rect(fill="light grey")) + scale_y_continuous(labels = comma) + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc"))
 
 ```
 
-\pagebreak
+- Sent by membership
 
-## Sent by membership
-
-```{r sent_g02, echo=FALSE, message=FALSE, warning=FALSE}
+```{r sent_g02, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 5.5, fig.height = 4}
 #graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
 ggplot(SentID, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
   geom_point(alpha=1,size = 4) + 
   scale_size_area() + 
   scale_colour_brewer(palette = "Set1") +
   ggtitle("Sent per membership") +
-  ylab("Sent per membership") + theme(legend.position ="top", 
-  panel.background = element_rect(fill="light grey")) + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc"))
+  ylab("Sent per membership") + theme(legend.position ="bottom", 
+  panel.background = element_rect(fill="light grey")) + scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_y_continuous(labels = scales::percent)
 
 ```
 
-\pagebreak
 
 
-```{r ConverSent, message=FALSE, warning=FALSE, include=FALSE}
-#transform the data from wide to long
-#on conversions/sent
-ConverSent <- melt(Summary_Membership_stat, id=1, measure=c("converSent_ratioRo", "converSent_ratioRc", "converSent_ratioFo","converSent_ratioFc"))
-
-```
-
-## Conversion per sent
-
-```{r sent_g03, echo=FALSE, message=FALSE, warning=FALSE}
-#graph a scatter plot for each RFM score and see how much conversions/number of riid relate to each categories
-ggplot(ConverSent, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) + 
-  geom_point(alpha=1,size = 4) + 
-  scale_size_area() + 
-  scale_colour_brewer(palette = "Set1") +
-  ggtitle("Conversion per Sent") +
-  ylab("Conversion per Sent") + theme(legend.position ="top", 
-  panel.background = element_rect(fill="light grey")
-) +scale_y_continuous(labels = scales::percent)+ scale_shape_discrete(labels=c("Ro","Rc","Fo","Fc")) + scale_colour_discrete(labels=c("Ro","Rc","Fo","Fc")) 
-
-```
 
 
 
@@ -353,15 +365,7 @@ multiplot(PRo,PRc,PFc, PFo, cols=2)
 ```
 
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
-library(ggplot2)
-p1 = qplot(1:10,rnorm(10))
-p2 = qplot(1:10,rnorm(10))
-library(gridExtra)
-grid.arrange(p1, p2, ncol=2, top = "Main title")
-
-```
 
 ```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 # Determine number of clusters
