@@ -3,12 +3,12 @@ title: "Email - Exploratory Analysis"
 author: "Chloe Li"
 date: "September 22, 2016"
 output:
+  word_document: default
   pdf_document:
     highlight: monochrome
   html_document:
     highlight: pygments
     theme: united
-  word_document: default
 header-includes: \usepackage{graphicx} \usepackage{fancyhdr} \pagestyle{fancy} \setlength\headheight{28pt}
   \fancyhead[L]{\includegraphics[width=0.5cm]{mobovidalogo.png}} \fancyfoot[LE,RO]{CL}
 ---
@@ -270,18 +270,6 @@ ggplot(ConverSent, aes(x=RFM_Score, y=value, colour=variable, shape=variable)) +
 
 ```
 
-
-## Scatter plot on conversions over number of sent.
-- y-axis represents the ratio of number of conversions per email sent. (how likely a customer in specific group at specific score would convert?)
-- x-axis represents the RFM_score of 1-7.
-    + Fc, as the Fc goes up, that is, score goes up, that is, as the the click rate goes up, the likelihood of this customer to convert is going up as well. Which makes sense, because the more they click, the more likely they will make a purchase. Here we do not need to consider the base value because by having the ratio of conversion over sent, we already normalized the data. Therefore, for those customers who fall under Fc at score of 7, we would like to target them, we could generate higher revenue by reduce the number of sent to them since they have higher conversion rate. Without considering the effect of what kind of emails (campaign) we sent out to them specifically, we know that, they will more likely to click on the link in the email no matter what we sent and have higher possibility of making a purchase at the end.
-    + Fo, as the Fo goes up, that is, score goes up from 1-7, as the open rate goes up, the likelihood of these customers to convert fluctuates but maintain at a low level of conversions rate. Which makes sense because, number of open for each customer for each email count is unique, while the number of clicks on an email might be way larger than the number of open, since there are multiple links associated with that specific email. But here, even the open rate goes up, the likelihood of convert is slow low, and has a peak at score of 7. For this group of customers, even their open rate is high but low conversion rate, it means that they are somewhat interested in our emails but for some reason they do not want to make a purchase afterward, either due to not enough discount/promotion, or not related to their interest (wrong phone model, not their taste/style, or not type of accessories they would like to buy etc.). Since we could not estimate customers’ personal interest at this point, we could target those customers with higher discount or better promotion event, should we send more emails to them, not necessarily true, but we could look at other graphs as well.
-    + Rc, as the score goes up, its how recent customers click on emails. For this group of customers, no matter how recent they made an action to the email, they have low conversion rate. Although, when score goes up (recent action were captured), customers tend to have higher conversion rate. Again, no matter how many life time emails they have received, if they click the email recently they tend to make a purchase in general. This could be because we have some sort of promotions going on that attracts them to make a purchase.
-    + Ro, as the score goes up, its how recent customers open the emails. Customers who opened the email most recently tend to have higher conversion rate over sent. This ignore how many email we already sent to them.
-- SO IN GENERAL
-    + with combination of all four groups Ro, Rc, Fo, Fc...
-    + In order to have higher conversion/sent, which means for every email we sent to the customer, we want them to make a purchase on that, we should focus on customers who have high click rate (7), open rate (7, or 4), Rc (recent action maker) of 6, and Ro of (7). Those customers are more likely to convert ignoring the fact that how many emails we sent to them over time.
-        
 
 \pagebreak
 
