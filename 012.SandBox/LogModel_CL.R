@@ -38,7 +38,7 @@ Test=DT[-inTrain,]
 
 
 Fmla = opened ~ Ro + Rc + Fc + Fo
-LogModel01 <- glm(Fmla, data = Train, family = "binomial")
+LogModel01 <- glm(opened ~ Ro + Rc + Fc + Fo, data = Train, family = "binomial")
 summary(LogModel01)
 
 
@@ -55,6 +55,23 @@ anova(LogModel01, test="Chisq")
 pR2(LogModel01)
 hoslem.test(Train$opened, fitted(LogModel01))
 
+
+#prediction
+M01_prediction <- predict(LogModel01, Test[,2:5], type = "response")
+
+Test$Pred_Open <- M01_prediction
+
+write.csv(Test, "Test_withPred.csv")
+
+
+#graph ROC and calculate AUC
+pr <- prediction(M01_prediction, Test$opened)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
 
 
 
@@ -75,6 +92,20 @@ anova(LogModel02, test="Chisq")
 anova(LogModel01,LogModel02)
 
 
+#prediction
+M02_prediction <- predict(LogModel02, Test[,2:5], type = "response")
+
+#graph ROC and calculate AUC
+pr <- prediction(M02_prediction, Test$opened)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+
+
 
 #drop Fc
 
@@ -91,25 +122,15 @@ anova(LogModel03, test="Chisq")
 anova(LogModel01,LogModel02, LogModel03)
 
 
-
-
 #prediction
-M01_prediction <- predict(LogModel01, Test[,2:5], type = "response")
-
-
-
+M03_prediction <- predict(LogModel03, Test[,2:5], type = "response")
 
 #graph ROC and calculate AUC
-pr <- prediction(M01_prediction, Test$opened)
+pr <- prediction(M03_prediction, Test$opened)
 prf <- performance(pr, measure = "tpr", x.measure = "fpr")
 plot(prf)
 
 auc <- performance(pr, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
-
-
-
-
-
 
