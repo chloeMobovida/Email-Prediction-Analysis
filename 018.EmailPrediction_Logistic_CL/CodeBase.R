@@ -9,8 +9,8 @@
                 
                 
                 #set your working directory
-                setwd("~/Documents/011.EmailPrediction_Logistic_CL/")
-                
+                setwd("~/Documents/02. EmailPrediction_CL/018.EmailPrediction_Logistic_CL/")
+          
                 #grep data insert data name
                 DT <- read.csv("./Data/eRFM_email_test1.csv")
                 #str(DT)
