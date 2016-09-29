@@ -2,13 +2,14 @@
 #by inputting master dataset, formula
 #output: append prediction to master/new master dataset, return equation, AUC, p-value/AIC, deviance etc. for measurement
 
-logit_Model <- function(dataframe, partitionPercent, dependentVar, independentVar, formula){
+logit_Model <- function(dataframe, partitionPercent, dependentVar, independentVar, formula, Probability){
 	#dataframe is the master dataset where you would like to do data partitioning and analysis on
 	#proper data type transformation has to be done on the dataframe before running this function
 	#partitionPercent is the percentage that you want to allocate your master to Train set
 	#dependentVar is dependent variable name in character string
 	#indepedentVar is independent variables name in a vector of character string
 	#formula is a vector of formual for modeling: e.g. formula = DV + X1 + X2+ X3 + ...
+  #probability is the percentage (cutoff) to identify target variable's class
 
 
 	set.seed(12345) #set.seed can be any number. This is just to ensure the result will be the same each time you run the following function
@@ -54,7 +55,26 @@ logit_Model <- function(dataframe, partitionPercent, dependentVar, independentVa
 
 	#ROC summarizes the predictive power for all possible values of p > 0.5.  The area under curve (AUC), referred to as index of accuracy(A) or concordance index, is a perfect performance metric for ROC curve. 
 	#Higher the area under curve, better the prediction power of the model. 
+  
+	#Confusion Matrix on Train set
+	pred.logit2 <- rep('0',length(Mtrain_prediction))
+	pred.logit2[Mtrain_prediction>=Probability] <- '1'
+	
+	print("Confusion Matrix on Train set")
+	print(table(pred.logit2, Train[,dependentVar]))
+	print(confusionMatrix(pred.logit2, Train[,dependentVar]))
 
+	
+	# Confusion Matrix on the test set
+	pred.logit <- rep('0',length(Mtest_prediction))
+	pred.logit[Mtest_prediction>=Probability] <- '1'
+	
+	print("Confusion Matrix on Test set")
+	print(table(pred.logit, Test[,dependentVar]))
+	print(confusionMatrix(Test[,dependentVar], pred.logit))
+	
+
+	
 	dataframe <- rbind(Train, Test) #rbind two dataset including the prediction
 	return(dataframe)	
 
