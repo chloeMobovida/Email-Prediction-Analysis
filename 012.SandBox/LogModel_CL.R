@@ -1,19 +1,11 @@
-#clear environment if neccessary
 rm(list = ls())
 
-#load neccessary packages
-#Note, you might need to install pacman first
-pacman::p_load("party","ggplot2", "dplyr", "caret",
-               "reshape2","data.table","lme4","lattice","plyr",
-               "knitr", "cluster","grid","gridExtra","C50","e1071","pscl","ROCR","ResourceSelection")
 
+#set your working directory
+setwd("~/Documents/02. EmailPrediction_CL/018.EmailPrediction_Logistic_CL/")
 
-
-#data import using ReadData function function
-source("/Users/chloeli/Documents/02. EmailPrediction_CL/012.SandBox/ReadData_Fun_CL.R")
-
-#this will return a data frame. So store it to a new vector
-DT <- ReadData("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data", "eRFM_email_test1.csv")
+#grep data insert data name
+DT <- read.csv("./Data/eRFM_email_test1.csv")
 
 #the following code is generalized for the same data structure
 #for the nature of characteristics of different dataset (even with same structure)
@@ -31,14 +23,20 @@ DT$riid <- as.character(DT$riid)
 DT <- filter(DT, sent != 0)
 
 
-library(caret)
-inTrain = createDataPartition(DT$converted, p = 0.75, list = FALSE)
+set.seed(12345)
+inTrain = createDataPartition(DT$opened, p = 0.75, list = FALSE)
 Train=DT[inTrain,]
 Test=DT[-inTrain,]
 
 
-Fmla = opened ~ Ro + Rc + Fc + Fo
-LogModel01 <- glm(opened ~ Ro + Rc + Fc + Fo, data = Train, family = "binomial")
+Fmla = opened ~ Ro + Rc + Fc + Fo + conversions + lifetime_sent +clusterNum
+LogModel01 <- glm(Fmla, data = Train, family = "binomial")
+
+
+
+
+
+
 summary(LogModel01)
 
 
@@ -46,6 +44,10 @@ Sum_Model <- summary(LogModel01)
 
 
 1 - pchisq((Sum_Model$null.deviance-Sum_Model$deviance), df=(Sum_Model$df.null - Sum_Model$df.residual))
+
+
+with(LogModel01, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+
 
 
 anova(LogModel01, test="Chisq")
@@ -57,23 +59,36 @@ hoslem.test(Train$opened, fitted(LogModel01))
 
 
 #prediction
-M01_prediction <- predict(LogModel01, Test[,2:5], type = "response")
+M01_prediction <- predict(LogModel01, Test[,2:8], type = "response")
 
 Test$Pred_Open <- M01_prediction
 
-write.csv(Test, "Test_withPred.csv")
+pred.logit2 <- rep('1',length(M01_prediction))
+pred.logit2[M01_prediction>=0.5] <- '0'
 
+#print("Confusion Matrix on Train set")
+confusionMatrix(Test[,"opened"], pred.logit2)
 
 #graph ROC and calculate AUC
 pr <- prediction(M01_prediction, Test$opened)
+
+auc <- performance(prediction(M01_prediction, Test$opened), measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+
+
+M02_prediction <- predict(LogModel01, Train[,2:5], type = "response")
+
+
+#graph ROC and calculate AUC
+pr <- prediction(M02_prediction, Train$opened)
 prf <- performance(pr, measure = "tpr", x.measure = "fpr")
 plot(prf)
 
 auc <- performance(pr, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
-
-
 
 
 
@@ -98,14 +113,14 @@ M02_prediction <- predict(LogModel02, Test[,2:5], type = "response")
 #graph ROC and calculate AUC
 pr <- prediction(M02_prediction, Test$opened)
 prf <- performance(pr, measure = "tpr", x.measure = "fpr")
-plot(prf)
+plot(prf,colorize = TRUE)
 
 auc <- performance(pr, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
 
 
-
+table(Train$opened, M02_prediction > 0.5)
 
 #drop Fc
 
