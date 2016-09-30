@@ -7,42 +7,26 @@ pacman::p_load("party","ggplot2", "dplyr", "caret",
                "reshape2","data.table","lme4","lattice","plyr",
                "knitr", "cluster","grid","gridExtra","C50","e1071")
 
+#set your working directory
+setwd("~/Documents/02. EmailPrediction_CL/019.Email_C50_CL/")
+
+source("./dtTransform_FUN.R") #trasnform data type #don't change
+
+#grep data insert data name
+DT <- read.csv("./Data/eRFM_email_test1.csv")
+#str(DT)
+DT <- dtTransform(DT) #run this only once
 
 
-#data import using ReadData function function
-source("/Users/chloeli/Documents/02. EmailPrediction_CL/012.SandBox/ReadData_Fun_CL.R")
-
-#this will return a data frame. So store it to a new vector
-DT <- ReadData("/Users/chloeli/Documents/02. EmailPrediction_CL/011.Data", "eRFM_email_test1.csv")
-
-#the following code is generalized for the same data structure
-#for the nature of characteristics of different dataset (even with same structure)
-#you still need to tweak some numbers for better model building purpose
-
-
-#reformat data
-#change multiple variables into factor type
-cols = c(2, 3, 4,5,8,9,10,11,12,13)
-DT[cols] <- lapply(DT[cols], factor)
-DT$riid <- as.character(DT$riid)
-
-
-#dont include sent == 0
-DT <- filter(DT, sent != 0)
-
-
+set.seed(12345)
 library(caret)
 inTrain = createDataPartition(DT$converted, p = 0.75, list = FALSE)
 Train=DT[inTrain,]
 Test=DT[-inTrain,]
 
-#summary(Train)
 
-table(Train$converted)
-table(Train$clicked)
-table(Train$opened)
 
-levels(DT$converted) <- c("Bad","Good")
+
 #-------------------------------------------------------------------------------------------------------------------#
 #                                              C50 Tree                                                             #                                               
 #-------------------------------------------------------------------------------------------------------------------#
@@ -57,14 +41,14 @@ levels(DT$converted) <- c("Bad","Good")
 
 
 costs <- matrix(
-  c(0, nrow(subset(Train, converted == "Bad")), nrow(subset(Train, converted == "Good")), 0),
+  c(0, nrow(subset(Train, Train[,"opened"] == "0")), nrow(subset(Train, Train[,"opened"] == "1")), 0),
   nrow=2,
   ncol=2,
   byrow=TRUE, 
-  dimnames=list(c("Bad", "Good"), c("Bad", "Good")))
+  dimnames=list(c("0", "1"), c("0", "1")))
 
 #-----------------------------------------Build a Tree Model--------------------------------------------------------#
-Tree_Model_01 <- C5.0(x=Train[,2:5], y=Train$converted, costs=costs, trials = 1, rules= FALSE)
+Tree_Model_01 <- C5.0(x=Train[,c("Ro", "Rc","Fc","Fo","conversions", "lifetime_sent","clusterNum")],y=Train$opened, costs=costs, trials = 1, rules= FALSE)
 
 plot(Tree_Model_01)
 
@@ -77,20 +61,17 @@ summary(Tree_Model_01)
 
 
 #rule set
-Tree_Model_02 <- C5.0(x=Train[,2:5], y=Train$converted, costs=costs, trials = 1, rules= TRUE)
+Tree_Model_02 <- C5.0(x=Train[,c("Ro", "Rc","Fc","Fo","conversions", "lifetime_sent","clusterNum")], y=Train$converted, costs=costs, trials = 2, rules= TRUE)
 summary(Tree_Model_02)
 
 
-#plot tree
-myTree <- C50:::as.party.C5.0(Tree_Model_02)
-TreePlot01 <- plot(myTree)
 
 
 #---------------------------------------Prediction On Same Data-----------------------------------------------------#
 #------------------------------------C5.0 Decision Tree Performance-------------------------------------------------#
 
 #predict on same data set
-Tree.Pred <- predict(Tree_Model_01, Test[,2:5], type = "class")
+Tree.Pred <- predict(Tree_Model_01, Test[,c("Ro", "Rc","Fc","Fo","conversions", "lifetime_sent","clusterNum")], type = "class")
 
 #add predicted value to original data set
 Test$predTree <- Tree.Pred
