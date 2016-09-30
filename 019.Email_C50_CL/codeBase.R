@@ -45,7 +45,7 @@
             #more about C5.0 https://www.rulequest.com/see5-unix.html
             
             #to save the Test set data including prediction 
-            #Test <- Sum$Test_dt
+            Test <- Sum$Test_dt
             
             #write.csv(Test, "Test.csv") 
             #to save the csv. file to directory if needed
