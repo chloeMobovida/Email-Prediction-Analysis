@@ -16,33 +16,46 @@
                 setwd("~/Documents/02. EmailPrediction_CL/018.EmailPrediction_Logistic_CL/")
                 
                 source("./dtTransform_FUN.R") #trasnform data type #don't change
+                source("./Model_Feed_Log_FUN.R") #funtion for feeding the new testing data
+                source("./logit_Model_FUN.R") #run logistic model
                 
                 #grep data insert data name
                 DT <- read.csv("./Data/eRFM_email_test1.csv")
+                
                 #str(DT)
                 DT <- dtTransform(DT) #run this only once
                 
- #--------------------------------------------------------EDIT PART---------------------------------------------------------------#
+                #read new data
+                NewDT <- read.csv("./Data/RRFF_email_test2_data.csv")
+                NewDT <- dtTransform(NewDT)
                 
+                
+ #--------------------------------------------------------EDIT PART---------------------------------------------------------------#
+# ####               
                 
                 #setup independent variabe and dependent variable, create a formula, setup partition percentage
                 #make sure the name of column names match
                 percentPartition <- 0.75 #% of train set for partitioning
-                fml = converted ~ Ro + Rc + Fc + Fo + conversions + lifetime_sent + clusterNum + opened_pred +complained_pred + clicked_pred
+                fml = opened ~ Ro + Rc + Fc + Fo + conversions + lifetime_sent #+ opened_pred + complained_pred + clicked_pred
                 #make sure the formula components are the same as IV and DV below
-                IV <- c("Ro", "Rc","Fc","Fo","conversions", "lifetime_sent","clusterNum","opened_pred","complained_pred","clicked_pred")
-                DV <- "converted"
-                TargetClassIdentify <- 0.005 #probability of hitting target (class of Good) (0-1)
+                IV <- c("Ro", "Rc","Fc","Fo","conversions", "lifetime_sent")#,"opened_pred","complained_pred","clicked_pred")
+                DV <- "opened"
+                TargetClassIdentify <- 0.5 #probability of hitting target (class of Good) (0-1)
+                #note: usually, for open and click, it has higher probability of hitting target. so you could do 0.5 or try 0.75
+                #for complained, choose 0.005
+                
                 #might need to reset this threshold so that R can distinguish the class to run confusion matrix.
                 #if you see error message e.g. the data cannot have more levels than the reference, means that your threshold set too high
                 #note, this threshold does not affect any prediction, only affect generating confusion matrix
 
+                
+# ####                
+                
 #--------------------------------------------------------EDIT END---------------------------------------------------------------#
 #--------------------------------------------------------RUN AUTO---------------------------------------------------------------#
                 
                 
-                source("./logit_Model_FUN.R") #run logistic model
-
+               
 
                 #logit_model returns a full dataframe with prediction probability
                 Sum <- logit_Model(DT, percentPartition, DV, IV, fml,TargetClassIdentify)
@@ -53,7 +66,13 @@
                 
                 #save DT as csv. if needed
                 #write.csv(DT, "DT_pred.csv")
-            
+
+              
+                
+                NewDT <- logit_Model_feed(NewDT, Sum$Model, DV,IV) #return a dataframe with prediction values
+                
+                #save to csv
+                #write.csv(NewDT, "LogOutput_predEmail.csv")
                 
                 
                 
