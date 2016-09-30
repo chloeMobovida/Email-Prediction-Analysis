@@ -76,7 +76,7 @@ logit_Model <- function(dataframe, partitionPercent, dependentVar, independentVa
 	
 
 	#create a list to stroe output
-	result <- list(Summary = Sum_Model, AIC =  Sum_Model$aic, Pvalue = pValue, AUC_train = paste("AUC on Train set ", aucTrain, sep=""), AUC_test = paste("AUC on Test set ", aucTest, sep=""),
+	result <- list(Model = Model, Summary = Sum_Model, AIC =  Sum_Model$aic, Pvalue = pValue, AUC_train = paste("AUC on Train set ", aucTrain, sep=""), AUC_test = paste("AUC on Test set ", aucTest, sep=""),
 		CM_train = confusionMatrix(pred.logit2, Train[,dependentVar]), CM_test = confusionMatrix(Test[,dependentVar], pred.logit), dataframe = rbind(Train, Test))
 
 	return(result)	
